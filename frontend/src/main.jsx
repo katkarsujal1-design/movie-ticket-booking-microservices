@@ -21,14 +21,6 @@ function formatTime(value) {
   }).format(new Date(2026, 0, 1, Number(hours), Number(minutes)));
 }
 
-function getLowestPrice(shows) {
-  if (shows.length === 0) {
-    return null;
-  }
-
-  return Math.min(...shows.map((show) => Number(show.price)));
-}
-
 function groupShowsByTheatre(shows) {
   return shows.reduce((groups, show) => {
     const key = `${show.theatre_id}-${show.show_date}`;
@@ -47,24 +39,49 @@ function groupShowsByTheatre(shows) {
   }, {});
 }
 
+function getLowestPrice(shows) {
+  if (shows.length === 0) {
+    return null;
+  }
+
+  return Math.min(...shows.map((show) => Number(show.price)));
+}
+
+function handlePosterError(event, title) {
+  event.currentTarget.onerror = null;
+  event.currentTarget.src = `https://placehold.co/500x750/111827/ffffff?text=${encodeURIComponent(
+    title
+  )}`;
+}
+
 function App() {
   const [movies, setMovies] = useState([]);
+  const [cities, setCities] = useState([]);
   const [selectedMovie, setSelectedMovie] = useState(null);
   const [shows, setShows] = useState([]);
   const [selectedShowId, setSelectedShowId] = useState(null);
+  const [searchText, setSearchText] = useState("");
+  const [selectedCity, setSelectedCity] = useState("All");
+  const [selectedGenre, setSelectedGenre] = useState("All");
+  const [selectedLanguage, setSelectedLanguage] = useState("All");
   const [loading, setLoading] = useState(true);
   const [showsLoading, setShowsLoading] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    async function loadMovies() {
+    async function loadInitialData() {
       try {
-        const response = await fetch(`${API_BASE_URL}/movies`);
-        if (!response.ok) {
-          throw new Error("Unable to load movies");
+        const [moviesResponse, citiesResponse] = await Promise.all([
+          fetch(`${API_BASE_URL}/movies`),
+          fetch(`${API_BASE_URL}/cities`)
+        ]);
+
+        if (!moviesResponse.ok || !citiesResponse.ok) {
+          throw new Error("Unable to load movie data");
         }
-        const data = await response.json();
-        setMovies(data);
+
+        setMovies(await moviesResponse.json());
+        setCities(await citiesResponse.json());
       } catch (err) {
         setError(err.message);
       } finally {
@@ -72,10 +89,10 @@ function App() {
       }
     }
 
-    loadMovies();
+    loadInitialData();
   }, []);
 
-  async function viewShows(movie) {
+  async function loadShows(movie, city = selectedCity) {
     setSelectedMovie(movie);
     setSelectedShowId(null);
     setShows([]);
@@ -83,18 +100,71 @@ function App() {
     setError("");
 
     try {
-      const response = await fetch(`${API_BASE_URL}/movies/${movie.id}/shows`);
+      const cityQuery =
+        city && city !== "All" ? `?city=${encodeURIComponent(city)}` : "";
+      const response = await fetch(
+        `${API_BASE_URL}/movies/${movie.id}/shows${cityQuery}`
+      );
+
       if (!response.ok) {
         throw new Error("Unable to load shows");
       }
-      const data = await response.json();
-      setShows(data);
+
+      setShows(await response.json());
     } catch (err) {
       setError(err.message);
     } finally {
       setShowsLoading(false);
     }
   }
+
+  function handleCityChange(event) {
+    const nextCity = event.target.value;
+    setSelectedCity(nextCity);
+
+    if (selectedMovie) {
+      loadShows(selectedMovie, nextCity);
+    }
+  }
+
+  function clearFilters() {
+    setSearchText("");
+    setSelectedCity("All");
+    setSelectedGenre("All");
+    setSelectedLanguage("All");
+
+    if (selectedMovie) {
+      loadShows(selectedMovie, "All");
+    }
+  }
+
+  const genres = useMemo(
+    () => ["All", ...new Set(movies.map((movie) => movie.genre))],
+    [movies]
+  );
+  const languages = useMemo(
+    () => ["All", ...new Set(movies.map((movie) => movie.language))],
+    [movies]
+  );
+  const cityOptions = useMemo(() => ["All", ...cities], [cities]);
+
+  const filteredMovies = useMemo(() => {
+    const normalizedSearch = searchText.trim().toLowerCase();
+
+    return movies.filter((movie) => {
+      const matchesSearch =
+        !normalizedSearch ||
+        movie.title.toLowerCase().includes(normalizedSearch) ||
+        movie.genre.toLowerCase().includes(normalizedSearch) ||
+        movie.language.toLowerCase().includes(normalizedSearch);
+      const matchesGenre =
+        selectedGenre === "All" || movie.genre === selectedGenre;
+      const matchesLanguage =
+        selectedLanguage === "All" || movie.language === selectedLanguage;
+
+      return matchesSearch && matchesGenre && matchesLanguage;
+    });
+  }, [movies, searchText, selectedGenre, selectedLanguage]);
 
   const groupedShows = useMemo(
     () => Object.values(groupShowsByTheatre(shows)),
@@ -105,16 +175,29 @@ function App() {
     () => shows.find((show) => show.show_id === selectedShowId),
     [selectedShowId, shows]
   );
+  const featuredMovie = selectedMovie || movies[0];
 
   return (
     <main className="app-shell">
+      <nav className="site-nav">
+        <div className="brand-mark">
+          <span>MT</span>
+          <strong>MovieTheatre</strong>
+        </div>
+        <div className="nav-links">
+          <span>Movies</span>
+          <span>Theatres</span>
+          <span>Shows</span>
+        </div>
+      </nav>
+
       <section className="hero">
         <div>
           <p className="eyebrow">Movie Ticket Booking</p>
-          <h1>Movie Theatre Service</h1>
+          <h1>Find shows across your favourite city theatres</h1>
           <p className="hero-copy">
-            Browse movies, compare theatres, and pick a show timing before
-            continuing to booking later.
+            Explore movies, filter by city and category, then select a show ID
+            that can continue to Booking Service later.
           </p>
         </div>
         <div className="hero-stats">
@@ -123,30 +206,122 @@ function App() {
             <span>Movies</span>
           </div>
           <div>
-            <strong>Pune</strong>
-            <span>City</span>
+            <strong>{cities.length}</strong>
+            <span>Cities</span>
           </div>
           <div>
             <strong>{selectedShowId || "--"}</strong>
-            <span>Show ID</span>
+            <span>Selected Show</span>
           </div>
         </div>
       </section>
 
       {error && <div className="error-message">{error}</div>}
 
+      {featuredMovie && (
+        <section className="featured-strip">
+          <img
+            src={featuredMovie.poster_url}
+            alt={featuredMovie.title}
+            onError={(event) => handlePosterError(event, featuredMovie.title)}
+          />
+          <div>
+            <p className="eyebrow dark">Featured selection</p>
+            <h2>{featuredMovie.title}</h2>
+            <p>{featuredMovie.description}</p>
+          </div>
+          <button type="button" onClick={() => loadShows(featuredMovie)}>
+            View Shows
+          </button>
+        </section>
+      )}
+
+      <section className="filter-bar">
+        <label>
+          <span>Search</span>
+          <input
+            type="search"
+            placeholder="Movie, genre, language"
+            value={searchText}
+            onChange={(event) => setSearchText(event.target.value)}
+          />
+        </label>
+        <label>
+          <span>City</span>
+          <select value={selectedCity} onChange={handleCityChange}>
+            {cityOptions.map((city) => (
+              <option key={city} value={city}>
+                {city}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          <span>Genre</span>
+          <select
+            value={selectedGenre}
+            onChange={(event) => setSelectedGenre(event.target.value)}
+          >
+            {genres.map((genre) => (
+              <option key={genre} value={genre}>
+                {genre}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          <span>Language</span>
+          <select
+            value={selectedLanguage}
+            onChange={(event) => setSelectedLanguage(event.target.value)}
+          >
+            {languages.map((language) => (
+              <option key={language} value={language}>
+                {language}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button type="button" className="ghost-button" onClick={clearFilters}>
+          Reset
+        </button>
+      </section>
+
+      <section className="city-chips" aria-label="City filters">
+        {cityOptions.map((city) => (
+          <button
+            type="button"
+            className={selectedCity === city ? "active" : ""}
+            key={city}
+            onClick={() => {
+              setSelectedCity(city);
+              if (selectedMovie) {
+                loadShows(selectedMovie, city);
+              }
+            }}
+          >
+            {city}
+          </button>
+        ))}
+      </section>
+
       <section className="content-grid">
         <div className="movies-panel">
           <div className="section-heading">
-            <h2>Movies</h2>
-            <span>{movies.length} available</span>
+            <div>
+              <p className="eyebrow dark">Now showing</p>
+              <h2>Movies</h2>
+            </div>
+            <span>{filteredMovies.length} found</span>
           </div>
 
           {loading ? (
             <p className="muted">Loading movies...</p>
+          ) : filteredMovies.length === 0 ? (
+            <p className="muted">No movies match your filters.</p>
           ) : (
             <div className="movie-grid">
-              {movies.map((movie, index) => (
+              {filteredMovies.map((movie, index) => (
                 <article
                   className={`movie-card ${
                     selectedMovie?.id === movie.id ? "selected" : ""
@@ -154,7 +329,11 @@ function App() {
                   key={movie.id}
                 >
                   <div className="poster-wrap">
-                    <img src={movie.poster_url} alt={movie.title} />
+                    <img
+                      src={movie.poster_url}
+                      alt={movie.title}
+                      onError={(event) => handlePosterError(event, movie.title)}
+                    />
                     <span className="poster-rank">#{index + 1}</span>
                   </div>
                   <div className="movie-card-body">
@@ -164,7 +343,7 @@ function App() {
                       <span>{movie.genre}</span>
                       <span>{movie.duration}</span>
                     </div>
-                    <button type="button" onClick={() => viewShows(movie)}>
+                    <button type="button" onClick={() => loadShows(movie)}>
                       View Shows
                     </button>
                   </div>
@@ -179,14 +358,20 @@ function App() {
             <div className="empty-state">
               <span className="empty-icon" aria-hidden="true"></span>
               <h2>Select a movie</h2>
-              <p>Choose a movie to view available theatres and show timings.</p>
+              <p>Choose a movie to view theatres, timing, and price.</p>
             </div>
           ) : (
             <>
               <div className="movie-detail">
-                <img src={selectedMovie.poster_url} alt={selectedMovie.title} />
+                <img
+                  src={selectedMovie.poster_url}
+                  alt={selectedMovie.title}
+                  onError={(event) =>
+                    handlePosterError(event, selectedMovie.title)
+                  }
+                />
                 <div>
-                  <p className="eyebrow">Now showing</p>
+                  <p className="eyebrow dark">Selected movie</p>
                   <h2>{selectedMovie.title}</h2>
                   <p>{selectedMovie.description}</p>
                   <div className="movie-meta detail-meta">
@@ -206,7 +391,8 @@ function App() {
                   </div>
                   {selectedShow && (
                     <p>
-                      {selectedShow.theatre_name}, {formatDate(selectedShow.show_date)} at{" "}
+                      {selectedShow.theatre_name},{" "}
+                      {formatDate(selectedShow.show_date)} at{" "}
                       {formatTime(selectedShow.show_time)}
                     </p>
                   )}
@@ -216,7 +402,7 @@ function App() {
               {showsLoading ? (
                 <p className="muted">Loading shows...</p>
               ) : groupedShows.length === 0 ? (
-                <p className="muted">No shows available for this movie.</p>
+                <p className="muted">No shows available for this city.</p>
               ) : (
                 <div className="theatre-list">
                   {groupedShows.map((group) => (

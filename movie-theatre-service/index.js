@@ -33,6 +33,18 @@ app.get("/movies", async (req, res) => {
   }
 });
 
+app.get("/cities", async (req, res) => {
+  try {
+    const [cities] = await pool.query(
+      "SELECT DISTINCT city FROM theatres ORDER BY city"
+    );
+    res.json(cities.map((row) => row.city));
+  } catch (error) {
+    console.error("Failed to fetch cities:", error.message);
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
 app.get("/movies/:id", async (req, res) => {
   try {
     const [movies] = await pool.query(
