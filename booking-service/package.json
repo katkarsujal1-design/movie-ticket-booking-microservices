@@ -1,0 +1,15 @@
+{
+  "name": "booking-service",
+  "version": "1.0.0",
+  "description": "Booking service for the movie ticket booking microservices project.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^5.2.1"
+  }
+}
