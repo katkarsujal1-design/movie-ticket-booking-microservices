@@ -4,6 +4,8 @@ import "./styles.css";
 
 const API_BASE_URL =
   import.meta.env.VITE_MOVIE_SERVICE_URL || "http://localhost:3001";
+const BOOKING_API_URL =
+  import.meta.env.VITE_BOOKING_SERVICE_URL || "http://localhost:3002";
 
 function formatDate(value) {
   return new Intl.DateTimeFormat("en-IN", {
@@ -67,6 +69,15 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [showsLoading, setShowsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [userId, setUserId] = useState("101");
+  const [seatAvailability, setSeatAvailability] = useState([]);
+  const [selectedSeats, setSelectedSeats] = useState([]);
+  const [seatsLoading, setSeatsLoading] = useState(false);
+  const [bookingLoading, setBookingLoading] = useState(false);
+  const [bookingMessage, setBookingMessage] = useState("");
+  const [latestBooking, setLatestBooking] = useState(null);
+  const [userBookings, setUserBookings] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   useEffect(() => {
     async function loadInitialData() {
@@ -91,6 +102,110 @@ function App() {
 
     loadInitialData();
   }, []);
+
+  useEffect(() => {
+    if (!selectedShowId) {
+      setSeatAvailability([]);
+      setSelectedSeats([]);
+      return;
+    }
+
+    loadSeats(selectedShowId);
+  }, [selectedShowId]);
+
+  async function readResponse(response) {
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(body.message || "The request could not be completed");
+    }
+    return body;
+  }
+
+  async function loadSeats(showId) {
+    setSeatsLoading(true);
+    setSelectedSeats([]);
+    setBookingMessage("");
+    try {
+      const response = await fetch(`${BOOKING_API_URL}/api/shows/${showId}/seats`);
+      const body = await readResponse(response);
+      setSeatAvailability(body.seats);
+    } catch (err) {
+      setBookingMessage(err.message);
+    } finally {
+      setSeatsLoading(false);
+    }
+  }
+
+  function toggleSeat(seat) {
+    if (seat.status === "BOOKED") return;
+    setSelectedSeats((current) =>
+      current.includes(seat.seatNumber)
+        ? current.filter((number) => number !== seat.seatNumber)
+        : [...current, seat.seatNumber]
+    );
+  }
+
+  async function createBooking() {
+    if (!selectedMovie || !selectedShow || selectedSeats.length === 0) return;
+    const parsedUserId = Number(userId);
+    if (!Number.isInteger(parsedUserId) || parsedUserId <= 0) {
+      setBookingMessage("Enter a valid positive user ID.");
+      return;
+    }
+    setBookingLoading(true);
+    setBookingMessage("");
+    try {
+      const response = await fetch(`${BOOKING_API_URL}/api/bookings`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: parsedUserId,
+          showId: selectedShow.show_id,
+          movieId: selectedMovie.id,
+          theatreId: selectedShow.theatre_id,
+          seats: selectedSeats
+        })
+      });
+      const booking = await readResponse(response);
+      setLatestBooking(booking);
+      setBookingMessage(`Booking ${booking.bookingReference} confirmed.`);
+      await Promise.all([loadSeats(selectedShowId), loadUserBookings(parsedUserId)]);
+    } catch (err) {
+      setBookingMessage(err.message);
+      await loadSeats(selectedShowId);
+    } finally {
+      setBookingLoading(false);
+    }
+  }
+
+  async function loadUserBookings(id = Number(userId)) {
+    if (!Number.isInteger(id) || id <= 0) {
+      setBookingMessage("Enter a valid positive user ID.");
+      return;
+    }
+    setHistoryLoading(true);
+    try {
+      const response = await fetch(`${BOOKING_API_URL}/api/bookings/user/${id}`);
+      setUserBookings(await readResponse(response));
+    } catch (err) {
+      setBookingMessage(err.message);
+    } finally {
+      setHistoryLoading(false);
+    }
+  }
+
+  async function cancelBooking(bookingId) {
+    setBookingMessage("");
+    try {
+      const response = await fetch(`${BOOKING_API_URL}/api/bookings/${bookingId}/cancel`, { method: "PUT" });
+      const booking = await readResponse(response);
+      setLatestBooking(booking);
+      setBookingMessage(`Booking ${booking.bookingReference} cancelled.`);
+      await Promise.all([loadUserBookings(Number(userId)), selectedShowId ? loadSeats(selectedShowId) : Promise.resolve()]);
+    } catch (err) {
+      setBookingMessage(err.message);
+    }
+  }
 
   async function loadShows(movie, city = selectedCity) {
     setSelectedMovie(movie);
@@ -174,6 +289,20 @@ function App() {
   const selectedShow = useMemo(
     () => shows.find((show) => show.show_id === selectedShowId),
     [selectedShowId, shows]
+  );
+  const seatRows = useMemo(
+    () =>
+      seatAvailability.reduce((rows, seat) => {
+        const row = seat.seatNumber.match(/^[A-Z]+/)?.[0] || "";
+        if (!rows[row]) rows[row] = [];
+        rows[row].push(seat);
+        return rows;
+      }, {}),
+    [seatAvailability]
+  );
+  const availableSeatCount = useMemo(
+    () => seatAvailability.filter((seat) => seat.status === "AVAILABLE").length,
+    [seatAvailability]
   );
   const featuredMovie = selectedMovie || movies[0];
 
@@ -441,6 +570,134 @@ function App() {
             </>
           )}
         </div>
+      </section>
+
+      <section className="booking-workspace" id="booking">
+        <div className="booking-panel">
+          <div className="booking-heading">
+            <div>
+              <p className="booking-kicker">Seat selection</p>
+              <h2>{selectedShow ? "Pick the perfect seats" : "Choose a show to begin"}</h2>
+              <p>{selectedShow ? `${selectedShow.theatre_name} · ${formatDate(selectedShow.show_date)} · ${formatTime(selectedShow.show_time)}` : "Your cinema seating plan will appear here."}</p>
+            </div>
+            {selectedShow && (
+              <div className="availability-badge">
+                <strong>{availableSeatCount}</strong>
+                <span>available</span>
+              </div>
+            )}
+          </div>
+
+          {!selectedShow ? (
+            <p className="muted">Select a movie and show above to view its seats.</p>
+          ) : seatsLoading ? (
+            <p className="muted">Loading seat availability...</p>
+          ) : (
+            <>
+              <div className="cinema-screen">
+                <span>SCREEN THIS WAY</span>
+              </div>
+              <div className="seat-map" aria-label="Seat selection">
+                {Object.entries(seatRows).map(([row, seats]) => (
+                  <div className="seat-row" key={row}>
+                    <span className="row-label">{row}</span>
+                    <div className="row-seats">
+                      {seats.map((seat) => (
+                        <button
+                          type="button"
+                          key={seat.seatNumber}
+                          disabled={seat.status === "BOOKED"}
+                          className={`${seat.status.toLowerCase()} ${selectedSeats.includes(seat.seatNumber) ? "selected" : ""}`}
+                          onClick={() => toggleSeat(seat)}
+                          aria-pressed={selectedSeats.includes(seat.seatNumber)}
+                          title={`${seat.seatNumber}: ${seat.status}`}
+                        >
+                          {seat.seatNumber.replace(row, "")}
+                        </button>
+                      ))}
+                    </div>
+                    <span className="row-label">{row}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="seat-legend">
+                <span><i className="available" />Available</span>
+                <span><i className="selected" />Selected</span>
+                <span><i className="booked" />Booked</span>
+              </div>
+            </>
+          )}
+        </div>
+
+        <aside className="booking-summary">
+          <div className="summary-heading">
+            <span>Booking summary</span>
+            <i>{selectedSeats.length}</i>
+          </div>
+          <h2>{selectedMovie?.title || "No movie selected"}</h2>
+          {selectedShow && (
+            <div className="summary-details">
+              <p><span>Theatre</span><strong>{selectedShow.theatre_name}</strong></p>
+              <p><span>Date</span><strong>{formatDate(selectedShow.show_date)}</strong></p>
+              <p><span>Time</span><strong>{formatTime(selectedShow.show_time)}</strong></p>
+              <p><span>Seats</span><strong>{selectedSeats.join(", ") || "Select seats"}</strong></p>
+              <p className="summary-total"><span>Total</span><strong>Rs. {(Number(selectedShow.price) * selectedSeats.length).toFixed(2)}</strong></p>
+            </div>
+          )}
+          <label className="user-field">
+            <span>User ID</span>
+            <input type="number" min="1" value={userId} onChange={(event) => setUserId(event.target.value)} />
+          </label>
+          <button
+            type="button"
+            className="book-button"
+            disabled={!selectedShow || selectedSeats.length === 0 || bookingLoading}
+            onClick={createBooking}
+          >
+            {bookingLoading ? "Confirming..." : `Confirm ${selectedSeats.length || ""} ${selectedSeats.length === 1 ? "Seat" : "Seats"}`}
+          </button>
+          {bookingMessage && <p className="booking-message">{bookingMessage}</p>}
+          {latestBooking && (
+            <div className={`booking-receipt ${latestBooking.status.toLowerCase()}`}>
+              <span>{latestBooking.status}</span>
+              <strong>{latestBooking.bookingReference}</strong>
+              <small>Booking #{latestBooking.id}</small>
+            </div>
+          )}
+        </aside>
+      </section>
+
+      <section className="history-panel">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow dark">Your account</p>
+            <h2>Booking history</h2>
+          </div>
+          <button type="button" className="history-button" onClick={() => loadUserBookings()} disabled={historyLoading}>
+            {historyLoading ? "Loading..." : "Load bookings"}
+          </button>
+        </div>
+        {userBookings.length === 0 ? (
+          <p className="muted">Enter a user ID and load bookings, or complete a new booking.</p>
+        ) : (
+          <div className="booking-list">
+            {userBookings.map((booking) => (
+              <article key={booking.id}>
+                <div>
+                  <span className={`status-pill ${booking.status.toLowerCase()}`}>{booking.status}</span>
+                  <h3>{booking.bookingReference}</h3>
+                  <p>Show #{booking.showId} · {booking.seats.map((seat) => seat.seatNumber).join(", ")}</p>
+                </div>
+                <div className="booking-list-actions">
+                  <strong>Rs. {Number(booking.totalAmount).toFixed(2)}</strong>
+                  {booking.status !== "CANCELLED" && (
+                    <button type="button" onClick={() => cancelBooking(booking.id)}>Cancel</button>
+                  )}
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
       </section>
     </main>
   );

@@ -1,0 +1,65 @@
+openapi: 3.0.3
+info:
+  title: Booking Service API
+  version: 1.0.0
+paths:
+  /api/bookings:
+    post:
+      summary: Validate a show, atomically reserve seats, and confirm a booking
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateBooking' }
+      responses:
+        '201': { description: Booking confirmed }
+        '400': { description: Invalid request }
+        '404': { description: Show not found }
+        '409': { description: One or more seats are already booked }
+        '503': { description: Theatre Service unavailable }
+  /api/bookings/{bookingId}:
+    get:
+      summary: Get a booking
+      parameters:
+        - { name: bookingId, in: path, required: true, schema: { type: integer } }
+      responses:
+        '200': { description: Booking details }
+        '404': { description: Booking not found }
+  /api/bookings/user/{userId}:
+    get:
+      summary: List a user's bookings, newest first
+      parameters:
+        - { name: userId, in: path, required: true, schema: { type: integer } }
+      responses:
+        '200': { description: Booking list }
+  /api/bookings/{bookingId}/cancel:
+    put:
+      summary: Cancel a booking and release its seats
+      parameters:
+        - { name: bookingId, in: path, required: true, schema: { type: integer } }
+      responses:
+        '200': { description: Booking cancelled }
+        '404': { description: Booking not found }
+        '409': { description: Invalid booking state }
+  /api/shows/{showId}/seats:
+    get:
+      summary: List configured seats and availability for a show
+      parameters:
+        - { name: showId, in: path, required: true, schema: { type: integer } }
+      responses:
+        '200': { description: Seat availability }
+components:
+  schemas:
+    CreateBooking:
+      type: object
+      required: [userId, showId, movieId, theatreId, seats]
+      properties:
+        userId: { type: integer, minimum: 1 }
+        showId: { type: integer, minimum: 1 }
+        movieId: { type: integer, minimum: 1 }
+        theatreId: { type: integer, minimum: 1 }
+        seats:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items: { type: string, pattern: '^[A-Z]{1,2}[1-9][0-9]?$' }

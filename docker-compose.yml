@@ -1,4 +1,20 @@
 services:
+  frontend:
+    build: ./frontend
+    container_name: movie-frontend
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_MOVIE_SERVICE_URL: http://localhost:3001
+      VITE_BOOKING_SERVICE_URL: http://localhost:3002
+    depends_on:
+      movie-theatre-service:
+        condition: service_started
+      booking-service:
+        condition: service_healthy
+    networks:
+      - movie-network
+
   movie-theatre-service:
     build: ./movie-theatre-service
     container_name: movie-theatre-service
@@ -27,9 +43,21 @@ services:
       DB_USER: root
       DB_PASSWORD: root
       DB_NAME: booking_db
+      KAFKA_BROKER: kafka:9092
+      THEATRE_SERVICE_URL: http://movie-theatre-service:3001
+      BOOKING_EVENTS_TOPIC: booking-events
     depends_on:
       mysql:
         condition: service_healthy
+      kafka:
+        condition: service_healthy
+      movie-theatre-service:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3002/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
     networks:
       - movie-network
 

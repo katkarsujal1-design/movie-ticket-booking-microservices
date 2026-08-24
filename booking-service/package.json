@@ -4,12 +4,16 @@
   "description": "Booking service for the movie ticket booking microservices project.",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "test": "node --test"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "cors": "^2.8.5",
+    "kafkajs": "^2.2.4",
+    "mysql2": "^3.15.3",
     "express": "^5.2.1"
   }
 }

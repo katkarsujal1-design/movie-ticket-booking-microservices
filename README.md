@@ -2,7 +2,7 @@
 
 A small college-level movie ticket booking microservices project.
 
-Current focus: Movie-Theatre Service backend and React UI.
+Includes movie/show discovery and a complete React seat-booking flow.
 
 ## Services
 
@@ -12,6 +12,7 @@ Current focus: Movie-Theatre Service backend and React UI.
 - notification-service on port 3004
 - MySQL 8.4
 - Apache Kafka in KRaft mode
+- React frontend on port 5173
 
 ## Movie-Theatre APIs
 
@@ -40,6 +41,15 @@ curl http://127.0.0.1:3001/movies/1
 curl http://127.0.0.1:3001/movies/1/shows
 ```
 
+## Booking Flow
+
+Open `http://localhost:5173`, choose a movie and show, select available seats,
+enter a user ID, and confirm the booking. The same page also displays booking
+history and supports cancellation.
+
+Booking Service runs at `http://localhost:3002` and exposes seat availability,
+booking creation, history, retrieval, and cancellation APIs.
+
 ## Run Frontend
 
 ```bash
@@ -64,6 +74,7 @@ To override it, create `frontend/.env`:
 
 ```text
 VITE_MOVIE_SERVICE_URL=http://localhost:3001
+VITE_BOOKING_SERVICE_URL=http://localhost:3002
 ```
 
 ## Stop Containers
