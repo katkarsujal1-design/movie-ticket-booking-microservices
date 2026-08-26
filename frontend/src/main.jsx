@@ -6,6 +6,10 @@ const API_BASE_URL =
   import.meta.env.VITE_MOVIE_SERVICE_URL || "http://localhost:3001";
 const BOOKING_API_URL =
   import.meta.env.VITE_BOOKING_SERVICE_URL || "http://localhost:3002";
+const PAYMENT_API_URL =
+  import.meta.env.VITE_PAYMENT_SERVICE_URL || "http://localhost:3003";
+
+const PAYMENT_METHODS = ["UPI", "CARD", "NET_BANKING", "WALLET", "CASH"];
 
 function formatDate(value) {
   return new Intl.DateTimeFormat("en-IN", {
@@ -49,6 +53,14 @@ function getLowestPrice(shows) {
   return Math.min(...shows.map((show) => Number(show.price)));
 }
 
+function formatCurrency(value) {
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 2
+  }).format(Number(value || 0));
+}
+
 function handlePosterError(event, title) {
   event.currentTarget.onerror = null;
   event.currentTarget.src = `https://placehold.co/500x750/111827/ffffff?text=${encodeURIComponent(
@@ -76,6 +88,10 @@ function App() {
   const [bookingLoading, setBookingLoading] = useState(false);
   const [bookingMessage, setBookingMessage] = useState("");
   const [latestBooking, setLatestBooking] = useState(null);
+  const [paymentMethod, setPaymentMethod] = useState("UPI");
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [paymentResult, setPaymentResult] = useState(null);
+  const [paymentMessage, setPaymentMessage] = useState("");
   const [userBookings, setUserBookings] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
 
@@ -168,6 +184,8 @@ function App() {
       });
       const booking = await readResponse(response);
       setLatestBooking(booking);
+      setPaymentResult(null);
+      setPaymentMessage("");
       setBookingMessage(`Booking ${booking.bookingReference} confirmed.`);
       await Promise.all([loadSeats(selectedShowId), loadUserBookings(parsedUserId)]);
     } catch (err) {
@@ -204,6 +222,38 @@ function App() {
       await Promise.all([loadUserBookings(Number(userId)), selectedShowId ? loadSeats(selectedShowId) : Promise.resolve()]);
     } catch (err) {
       setBookingMessage(err.message);
+    }
+  }
+
+  async function processPayment() {
+    if (!latestBooking || latestBooking.status !== "CONFIRMED") {
+      setPaymentMessage("Create a confirmed booking before payment.");
+      return;
+    }
+
+    setPaymentLoading(true);
+    setPaymentMessage("");
+    setPaymentResult(null);
+
+    try {
+      const response = await fetch(`${PAYMENT_API_URL}/api/payments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          bookingId: latestBooking.bookingReference,
+          userId: String(latestBooking.userId),
+          amount: Number(latestBooking.totalAmount),
+          currency: "INR",
+          paymentMethod
+        })
+      });
+      const body = await readResponse(response);
+      setPaymentResult(body.payment);
+      setPaymentMessage(body.message);
+    } catch (err) {
+      setPaymentMessage(err.message);
+    } finally {
+      setPaymentLoading(false);
     }
   }
 
@@ -314,9 +364,9 @@ function App() {
           <strong>MovieTheatre</strong>
         </div>
         <div className="nav-links">
-          <span>Movies</span>
-          <span>Theatres</span>
-          <span>Shows</span>
+          <a href="#movies">Movies</a>
+          <a href="#booking">Booking</a>
+          <a href="#history">History</a>
         </div>
       </nav>
 
@@ -325,8 +375,8 @@ function App() {
           <p className="eyebrow">Movie Ticket Booking</p>
           <h1>Find shows across your favourite city theatres</h1>
           <p className="hero-copy">
-            Explore movies, filter by city and category, then select a show ID
-            that can continue to Booking Service later.
+            Explore movies, pick seats, confirm your booking, and complete a
+            simulated payment from one clean flow.
           </p>
         </div>
         <div className="hero-stats">
@@ -341,6 +391,10 @@ function App() {
           <div>
             <strong>{selectedShowId || "--"}</strong>
             <span>Selected Show</span>
+          </div>
+          <div>
+            <strong>{paymentResult?.status || "--"}</strong>
+            <span>Payment</span>
           </div>
         </div>
       </section>
@@ -434,7 +488,7 @@ function App() {
         ))}
       </section>
 
-      <section className="content-grid">
+      <section className="content-grid" id="movies">
         <div className="movies-panel">
           <div className="section-heading">
             <div>
@@ -507,7 +561,7 @@ function App() {
                     <span>{selectedMovie.language}</span>
                     <span>{selectedMovie.genre}</span>
                     <span>{selectedMovie.duration}</span>
-                    {lowestPrice && <span>From Rs. {lowestPrice}</span>}
+                    {lowestPrice && <span>From {formatCurrency(lowestPrice)}</span>}
                   </div>
                 </div>
               </div>
@@ -559,7 +613,7 @@ function App() {
                             onClick={() => setSelectedShowId(show.show_id)}
                           >
                             {formatTime(show.show_time)}
-                            <span>Rs. {show.price}</span>
+                            <span>{formatCurrency(show.price)}</span>
                           </button>
                         ))}
                       </div>
@@ -641,7 +695,7 @@ function App() {
               <p><span>Date</span><strong>{formatDate(selectedShow.show_date)}</strong></p>
               <p><span>Time</span><strong>{formatTime(selectedShow.show_time)}</strong></p>
               <p><span>Seats</span><strong>{selectedSeats.join(", ") || "Select seats"}</strong></p>
-              <p className="summary-total"><span>Total</span><strong>Rs. {(Number(selectedShow.price) * selectedSeats.length).toFixed(2)}</strong></p>
+              <p className="summary-total"><span>Total</span><strong>{formatCurrency(Number(selectedShow.price) * selectedSeats.length)}</strong></p>
             </div>
           )}
           <label className="user-field">
@@ -664,10 +718,53 @@ function App() {
               <small>Booking #{latestBooking.id}</small>
             </div>
           )}
+          {latestBooking?.status === "CONFIRMED" && (
+            <div className="payment-box">
+              <div className="summary-heading">
+                <span>Payment</span>
+                <i>Rs</i>
+              </div>
+              <p className="payment-amount">
+                <span>Payable</span>
+                <strong>{formatCurrency(latestBooking.totalAmount)}</strong>
+              </p>
+              <label className="user-field">
+                <span>Payment method</span>
+                <select value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value)}>
+                  {PAYMENT_METHODS.map((method) => (
+                    <option key={method} value={method}>
+                      {method.replace("_", " ")}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                type="button"
+                className="pay-button"
+                disabled={paymentLoading || paymentResult?.status === "SUCCESS" || paymentResult?.status === "REFUNDED"}
+                onClick={processPayment}
+              >
+                {paymentLoading ? "Processing..." : paymentResult?.status === "SUCCESS" ? "Paid" : `Pay ${formatCurrency(latestBooking.totalAmount)}`}
+              </button>
+              {paymentMessage && (
+                <p className={`payment-message ${paymentResult?.status?.toLowerCase() || ""}`}>
+                  {paymentMessage}
+                </p>
+              )}
+              {paymentResult && (
+                <div className={`payment-receipt ${paymentResult.status.toLowerCase()}`}>
+                  <span>{paymentResult.status}</span>
+                  <strong>{paymentResult.paymentId}</strong>
+                  {paymentResult.transactionId && <small>{paymentResult.transactionId}</small>}
+                  {paymentResult.failureReason && <small>{paymentResult.failureReason}</small>}
+                </div>
+              )}
+            </div>
+          )}
         </aside>
       </section>
 
-      <section className="history-panel">
+      <section className="history-panel" id="history">
         <div className="section-heading">
           <div>
             <p className="eyebrow dark">Your account</p>
@@ -689,7 +786,7 @@ function App() {
                   <p>Show #{booking.showId} · {booking.seats.map((seat) => seat.seatNumber).join(", ")}</p>
                 </div>
                 <div className="booking-list-actions">
-                  <strong>Rs. {Number(booking.totalAmount).toFixed(2)}</strong>
+                  <strong>{formatCurrency(booking.totalAmount)}</strong>
                   {booking.status !== "CANCELLED" && (
                     <button type="button" onClick={() => cancelBooking(booking.id)}>Cancel</button>
                   )}

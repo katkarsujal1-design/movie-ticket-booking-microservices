@@ -7,6 +7,7 @@ services:
     environment:
       VITE_MOVIE_SERVICE_URL: http://localhost:3001
       VITE_BOOKING_SERVICE_URL: http://localhost:3002
+      VITE_PAYMENT_SERVICE_URL: http://localhost:3003
     depends_on:
       movie-theatre-service:
         condition: service_started
@@ -68,16 +69,24 @@ services:
       - "3003:3003"
     environment:
       PORT: 3003
-      DB_HOST: mysql
+      DB_HOST: payment-db
+      DB_PORT: 3306
       DB_USER: root
       DB_PASSWORD: root
       DB_NAME: payment_db
+      PAYMENT_SIMULATION_MODE: random
       KAFKA_BROKER: kafka:9092
+      KAFKA_CLIENT_ID: payment-service
     depends_on:
-      mysql:
+      payment-db:
         condition: service_healthy
       kafka:
-        condition: service_healthy
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3003/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
     networks:
       - movie-network
 
@@ -103,6 +112,23 @@ services:
       MYSQL_ROOT_PASSWORD: root
     volumes:
       - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - movie-network
+
+  payment-db:
+    image: mysql:8.4
+    container_name: movie-payment-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: payment_db
+    volumes:
+      - payment-db-data:/var/lib/mysql
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot"]
       interval: 5s
@@ -146,4 +172,5 @@ networks:
 
 volumes:
   mysql-data:
+  payment-db-data:
   kafka-data:

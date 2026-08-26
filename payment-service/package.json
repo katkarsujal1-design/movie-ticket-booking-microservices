@@ -2,15 +2,18 @@
   "name": "payment-service",
   "version": "1.0.0",
   "description": "Payment service for the movie ticket booking microservices project.",
-  "main": "index.js",
+  "main": "server.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node server.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
     "express": "^5.2.1",
-    "kafkajs": "^2.2.4"
+    "kafkajs": "^2.2.4",
+    "mysql2": "^3.16.0"
   }
 }

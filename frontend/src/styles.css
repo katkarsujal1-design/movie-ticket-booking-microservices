@@ -2,17 +2,19 @@
   --cyan-glow: 0 0 18px rgba(34, 211, 238, 0.42);
   --blue-glow: 0 0 22px rgba(59, 130, 246, 0.36);
   --pink-glow: 0 0 24px rgba(236, 72, 153, 0.26);
+  --surface: rgba(255, 255, 255, 0.96);
+  --surface-strong: #ffffff;
+  --ink: #0f172a;
+  --muted: #64748b;
+  --line: #d9e2ec;
   color: #1f2933;
   background:
-    radial-gradient(circle at 16% 10%, rgba(34, 211, 238, 0.26), transparent 28%),
-    radial-gradient(circle at 86% 16%, rgba(59, 130, 246, 0.22), transparent 30%),
-    radial-gradient(circle at 50% 45%, rgba(236, 72, 153, 0.14), transparent 34%),
     linear-gradient(
       180deg,
-      rgba(8, 13, 25, 0.94),
-      rgba(8, 13, 25, 0.86) 430px,
-      rgba(8, 13, 25, 0.3) 610px,
-      transparent 760px
+      rgba(8, 13, 25, 0.96),
+      rgba(8, 13, 25, 0.84) 390px,
+      rgba(13, 25, 45, 0.44) 620px,
+      rgba(238, 242, 247, 0.98) 880px
     ),
     url("https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=1800&q=80")
       center top / cover fixed,
@@ -30,6 +32,10 @@ body {
   margin: 0;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 button,
 input,
 select {
@@ -44,7 +50,8 @@ select {
 
 .site-nav {
   align-items: center;
-  background: rgba(15, 23, 42, 0.78);
+  backdrop-filter: blur(18px);
+  background: rgba(15, 23, 42, 0.84);
   border: 1px solid rgba(148, 163, 184, 0.28);
   border-radius: 8px;
   box-shadow: inset 0 0 0 1px rgba(34, 211, 238, 0.08), var(--blue-glow);
@@ -52,6 +59,9 @@ select {
   justify-content: space-between;
   margin-bottom: 18px;
   padding: 12px 14px;
+  position: sticky;
+  top: 12px;
+  z-index: 20;
 }
 
 .brand-mark {
@@ -75,10 +85,24 @@ select {
 }
 
 .nav-links {
-  color: #cbd5e1;
   display: flex;
-  gap: 18px;
+  gap: 8px;
   font-size: 0.92rem;
+}
+
+.nav-links a {
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: #cbd5e1;
+  font-weight: 700;
+  padding: 7px 10px;
+  text-decoration: none;
+}
+
+.nav-links a:hover {
+  background: rgba(14, 165, 233, 0.16);
+  border-color: rgba(125, 211, 252, 0.35);
+  color: #ffffff;
 }
 
 .hero {
@@ -121,6 +145,7 @@ select {
   font-size: clamp(2.05rem, 4.7vw, 4rem);
   line-height: 1.02;
   max-width: 840px;
+  text-wrap: balance;
   text-shadow: 0 0 26px rgba(56, 189, 248, 0.22);
 }
 
@@ -146,7 +171,8 @@ select {
 }
 
 .hero-stats {
-  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(18px);
+  background: rgba(255, 255, 255, 0.92);
   border: 1px solid rgba(255, 255, 255, 0.72);
   border-radius: 8px;
   box-shadow: 0 24px 60px rgba(15, 23, 42, 0.28), var(--cyan-glow);
@@ -175,7 +201,7 @@ select {
 }
 
 .hero-stats div {
-  background: #ffffff;
+  background: rgba(255, 255, 255, 0.82);
   display: flex;
   justify-content: space-between;
   padding: 15px 17px;
@@ -917,8 +943,19 @@ select {
   width: 100%;
 }
 
+.user-field select {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  color: #0f172a;
+  min-height: 42px;
+  padding: 9px 11px;
+  width: 100%;
+}
+
 .book-button,
-.history-button {
+.history-button,
+.pay-button {
   background: linear-gradient(135deg, #0891b2, #2563eb);
   border: 0;
   border-radius: 6px;
@@ -934,8 +971,15 @@ select {
   width: 100%;
 }
 
+.pay-button {
+  background: linear-gradient(135deg, #15803d, #0891b2);
+  margin-top: 12px;
+  width: 100%;
+}
+
 .book-button:disabled,
-.history-button:disabled {
+.history-button:disabled,
+.pay-button:disabled {
   cursor: not-allowed;
   opacity: 0.5;
 }
@@ -960,6 +1004,87 @@ select {
 .booking-receipt span { color: #15803d; font-size: 0.72rem; font-weight: 900; }
 .booking-receipt.cancelled span { color: #b91c1c; }
 .booking-receipt small { color: #64748b; }
+
+.payment-box {
+  border-top: 1px solid #e2e8f0;
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+  padding-top: 16px;
+}
+
+.payment-amount {
+  align-items: center;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 7px;
+  display: flex;
+  justify-content: space-between;
+  margin: 0;
+  padding: 10px 12px;
+}
+
+.payment-amount span {
+  color: #166534;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.payment-amount strong {
+  color: #14532d;
+}
+
+.payment-message {
+  background: #ecfeff;
+  border-radius: 6px;
+  color: #155e75;
+  font-size: 0.88rem;
+  margin: 0;
+  padding: 9px;
+}
+
+.payment-message.success {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.payment-message.failed {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.payment-receipt {
+  border: 1px solid #86efac;
+  border-radius: 7px;
+  display: grid;
+  padding: 12px;
+}
+
+.payment-receipt.failed {
+  border-color: #fca5a5;
+}
+
+.payment-receipt.refunded {
+  border-color: #facc15;
+}
+
+.payment-receipt span {
+  color: #15803d;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.payment-receipt.failed span {
+  color: #b91c1c;
+}
+
+.payment-receipt.refunded span {
+  color: #a16207;
+}
+
+.payment-receipt small {
+  color: #64748b;
+}
 
 .history-panel {
   margin-top: 22px;

@@ -1,0 +1,20 @@
+CREATE TABLE IF NOT EXISTS payments (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  payment_id VARCHAR(40) NOT NULL UNIQUE,
+  booking_id VARCHAR(80) NOT NULL,
+  user_id VARCHAR(80) NOT NULL,
+  amount DECIMAL(10,2) NOT NULL,
+  currency VARCHAR(10) NOT NULL DEFAULT 'INR',
+  payment_method ENUM('UPI','CARD','NET_BANKING','WALLET','CASH') NOT NULL,
+  transaction_id VARCHAR(40) NULL UNIQUE,
+  status ENUM('PENDING','PROCESSING','SUCCESS','FAILED','REFUNDED') NOT NULL DEFAULT 'PENDING',
+  failure_reason VARCHAR(255) NULL,
+  refunded_at TIMESTAMP(3) NULL,
+  created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  updated_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  successful_booking_key VARCHAR(80) GENERATED ALWAYS AS (IF(status = 'SUCCESS', booking_id, NULL)) STORED,
+  CONSTRAINT uq_successful_payment_per_booking UNIQUE (successful_booking_key),
+  INDEX idx_payments_booking (booking_id),
+  INDEX idx_payments_status_created (status, created_at DESC),
+  INDEX idx_payments_method_created (payment_method, created_at DESC)
+) ENGINE=InnoDB;
