@@ -1,0 +1,3 @@
+package com.moviebooking.notification.repository;
+import com.moviebooking.notification.entity.Notification; import org.springframework.data.domain.*; import org.springframework.data.jpa.repository.*;
+public interface NotificationRepository extends JpaRepository<Notification,Long> { boolean existsByEventId(String eventId); Page<Notification> findByUserId(String userId, Pageable pageable); Page<Notification> findByBookingId(String bookingId, Pageable pageable); Page<Notification> findByUserIdAndReadAtIsNull(String userId, Pageable pageable); @Modifying @Query("update Notification n set n.readAt = CURRENT_TIMESTAMP where n.userId = :userId and n.readAt is null") int markAllRead(String userId); }

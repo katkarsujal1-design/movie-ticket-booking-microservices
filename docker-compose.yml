@@ -94,13 +94,26 @@ services:
     build: ./notification-service
     container_name: notification-service
     ports:
-      - "3004:3004"
+      - "3005:3005"
     environment:
-      PORT: 3004
-      KAFKA_BROKER: kafka:9092
+      SERVER_PORT: 3005
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: notification_db
+      DB_USERNAME: root
+      DB_PASSWORD: root
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      MAIL_ENABLED: "false"
     depends_on:
+      mysql:
+        condition: service_healthy
       kafka:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3005/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
     networks:
       - movie-network
 

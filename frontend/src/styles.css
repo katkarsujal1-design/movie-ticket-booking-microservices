@@ -1090,6 +1090,15 @@ select {
   margin-top: 22px;
 }
 
+.notification-panel { margin-bottom: 30px; }
+.notification-list { display: grid; gap: 10px; }
+.notification-list article { align-items: center; background: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #0891b2; border-radius: 7px; display: flex; justify-content: space-between; padding: 14px; }
+.notification-list article.read { border-left-color: #cbd5e1; opacity: 0.78; }
+.notification-list h3, .notification-list p { margin: 5px 0 0; }
+.notification-list p { color: #64748b; }
+.notification-list button { background: transparent; border: 1px solid #0891b2; border-radius: 5px; color: #075985; cursor: pointer; padding: 6px 11px; }
+.notification-message { background: #fee2e2; border-radius: 6px; color: #991b1b; padding: 9px; }
+
 .booking-list {
   display: grid;
   gap: 10px;

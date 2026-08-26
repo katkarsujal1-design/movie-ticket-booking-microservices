@@ -8,6 +8,8 @@ const BOOKING_API_URL =
   import.meta.env.VITE_BOOKING_SERVICE_URL || "http://localhost:3002";
 const PAYMENT_API_URL =
   import.meta.env.VITE_PAYMENT_SERVICE_URL || "http://localhost:3003";
+const NOTIFICATION_API_URL =
+  import.meta.env.VITE_NOTIFICATION_SERVICE_URL || "http://localhost:3005";
 
 const PAYMENT_METHODS = ["UPI", "CARD", "NET_BANKING", "WALLET", "CASH"];
 
@@ -94,6 +96,9 @@ function App() {
   const [paymentMessage, setPaymentMessage] = useState("");
   const [userBookings, setUserBookings] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const [notificationMessage, setNotificationMessage] = useState("");
 
   useEffect(() => {
     async function loadInitialData() {
@@ -209,6 +214,34 @@ function App() {
       setBookingMessage(err.message);
     } finally {
       setHistoryLoading(false);
+    }
+  }
+
+  async function loadNotifications(id = userId) {
+    if (!String(id).trim()) {
+      setNotificationMessage("Enter a user ID to load notifications.");
+      return;
+    }
+    setNotificationsLoading(true);
+    setNotificationMessage("");
+    try {
+      const response = await fetch(`${NOTIFICATION_API_URL}/api/notifications/user/${encodeURIComponent(id)}?page=0&size=20`);
+      const body = await readResponse(response);
+      setNotifications(body.data?.content || []);
+    } catch (err) {
+      setNotificationMessage(`${err.message}. Make sure Notification Service is running on port 3005.`);
+    } finally {
+      setNotificationsLoading(false);
+    }
+  }
+
+  async function markNotificationRead(notificationId) {
+    try {
+      const response = await fetch(`${NOTIFICATION_API_URL}/api/notifications/${notificationId}/read`, { method: "PATCH" });
+      const body = await readResponse(response);
+      setNotifications((current) => current.map((item) => item.id === notificationId ? body.data : item));
+    } catch (err) {
+      setNotificationMessage(err.message);
     }
   }
 
@@ -367,6 +400,7 @@ function App() {
           <a href="#movies">Movies</a>
           <a href="#booking">Booking</a>
           <a href="#history">History</a>
+          <a href="#notifications">Notifications</a>
         </div>
       </nav>
 
@@ -791,6 +825,30 @@ function App() {
                     <button type="button" onClick={() => cancelBooking(booking.id)}>Cancel</button>
                   )}
                 </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="history-panel notification-panel" id="notifications">
+        <div className="section-heading">
+          <div><p className="eyebrow dark">Your account</p><h2>Notifications</h2></div>
+          <button type="button" className="history-button" onClick={() => loadNotifications()} disabled={notificationsLoading}>
+            {notificationsLoading ? "Loading..." : "Load notifications"}
+          </button>
+        </div>
+        {notificationMessage && <p className="notification-message">{notificationMessage}</p>}
+        {notifications.length === 0 ? <p className="muted">Load notifications for the User ID entered in the booking summary.</p> : (
+          <div className="notification-list">
+            {notifications.map((notification) => (
+              <article className={notification.readAt ? "read" : "unread"} key={notification.id}>
+                <div>
+                  <span className={`status-pill ${notification.status.toLowerCase()}`}>{notification.notificationType.replaceAll("_", " ")}</span>
+                  <h3>{notification.subject}</h3>
+                  <p>{notification.bookingId ? `Booking ${notification.bookingId} · ` : ""}{new Date(notification.createdAt).toLocaleString("en-IN")}</p>
+                </div>
+                {!notification.readAt && <button type="button" onClick={() => markNotificationRead(notification.id)}>Mark read</button>}
               </article>
             ))}
           </div>

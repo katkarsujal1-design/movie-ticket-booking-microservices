@@ -1,0 +1,3 @@
+package com.moviebooking.notification.mapper;
+import com.moviebooking.notification.dto.NotificationResponse;import com.moviebooking.notification.entity.Notification;
+public final class NotificationMapper{private NotificationMapper(){}public static NotificationResponse toResponse(Notification n){return NotificationResponse.builder().id(n.getId()).eventId(n.getEventId()).userId(n.getUserId()).bookingId(n.getBookingId()).recipient(n.getRecipient()).notificationType(n.getNotificationType()).channel(n.getChannel()).subject(n.getSubject()).message(n.getMessage()).status(n.getStatus()).failureReason(n.getFailureReason()).createdAt(n.getCreatedAt()).sentAt(n.getSentAt()).readAt(n.getReadAt()).build();}}

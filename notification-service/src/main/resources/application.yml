@@ -1,0 +1,49 @@
+server:
+  port: ${SERVER_PORT:3005}
+spring:
+  application: { name: notification-service }
+  datasource:
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:notification_db}?createDatabaseIfNotExist=true&serverTimezone=UTC
+    username: ${DB_USERNAME:${DB_USER:root}}
+    password: ${DB_PASSWORD:root}
+  jpa:
+    hibernate: { ddl-auto: update }
+    open-in-view: false
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:${KAFKA_BROKER:localhost:9092}}
+    consumer:
+      group-id: ${KAFKA_GROUP_ID:notification-service}
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    listener: { ack-mode: record }
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+  mail:
+    host: ${MAIL_HOST:}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail.smtp.auth: "${MAIL_SMTP_AUTH:true}"
+      mail.smtp.starttls.enable: "${MAIL_STARTTLS:true}"
+notification:
+  mail:
+    enabled: "${MAIL_ENABLED:false}"
+    from: "${MAIL_FROM:no-reply@moviebooking.local}"
+  kafka:
+    topics:
+      booking-confirmed: ${TOPIC_BOOKING_CONFIRMED:booking-confirmed}
+      payment-success: ${TOPIC_PAYMENT_SUCCESS:payment-success}
+      payment-failed: ${TOPIC_PAYMENT_FAILED:payment-failed}
+      booking-cancelled: ${TOPIC_BOOKING_CANCELLED:booking-cancelled}
+      refund-initiated: ${TOPIC_REFUND_INITIATED:refund-initiated}
+      refund-completed: ${TOPIC_REFUND_COMPLETED:refund-completed}
+management:
+  endpoints: { web: { exposure: { include: health,info } } }
+  endpoint: { health: { probes: { enabled: true } } }
+  health:
+    mail: { enabled: false }
+springdoc: { swagger-ui: { path: /swagger-ui.html } }

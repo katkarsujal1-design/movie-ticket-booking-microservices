@@ -1,0 +1,3 @@
+package com.moviebooking.notification.service;
+import com.moviebooking.notification.dto.NotificationResponse;import com.moviebooking.notification.enums.NotificationType;import com.moviebooking.notification.event.NotificationEvent;import org.springframework.data.domain.*;
+public interface NotificationService { void process(NotificationType type, NotificationEvent event); Page<NotificationResponse> all(Pageable page); NotificationResponse one(Long id); Page<NotificationResponse> user(String userId,Pageable page); Page<NotificationResponse> booking(String bookingId,Pageable page); Page<NotificationResponse> unread(String userId,Pageable page); NotificationResponse markRead(Long id); int markAllRead(String userId); }
