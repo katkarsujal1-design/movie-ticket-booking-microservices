@@ -393,8 +393,8 @@ function App() {
     <main className="app-shell">
       <nav className="site-nav">
         <div className="brand-mark">
-          <span>MT</span>
-          <strong>MovieTheatre</strong>
+          <span>BT</span>
+          <strong>BookMyTicket</strong>
         </div>
         <div className="nav-links">
           <a href="#movies">Movies</a>

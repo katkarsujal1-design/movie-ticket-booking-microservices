@@ -18,10 +18,12 @@ function createPaymentEventPublisher(suppliedProducer) {
         connected = true;
       }
       const payload = {
+        eventId: `${eventType}-${payment.paymentId}`,
         eventType,
         paymentId: payment.paymentId,
         bookingId: payment.bookingId,
         userId: payment.userId,
+        userEmail: `user${payment.userId}@moviebooking.local`,
         amount: payment.amount,
         currency: payment.currency,
         paymentMethod: payment.paymentMethod,

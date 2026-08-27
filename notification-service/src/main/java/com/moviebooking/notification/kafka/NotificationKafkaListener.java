@@ -1,3 +1,75 @@
 package com.moviebooking.notification.kafka;
-import com.fasterxml.jackson.databind.ObjectMapper;import com.moviebooking.notification.enums.NotificationType;import com.moviebooking.notification.event.NotificationEvent;import com.moviebooking.notification.exception.InvalidNotificationEventException;import com.moviebooking.notification.service.NotificationService;import lombok.RequiredArgsConstructor;import lombok.extern.slf4j.Slf4j;import org.springframework.kafka.annotation.KafkaListener;import org.springframework.stereotype.Component;
-@Component @RequiredArgsConstructor @Slf4j public class NotificationKafkaListener {private final ObjectMapper mapper;private final NotificationService service;@KafkaListener(topics="${notification.kafka.topics.booking-confirmed}") public void booking(String payload){handle(NotificationType.BOOKING_CONFIRMED,payload);}@KafkaListener(topics="${notification.kafka.topics.payment-success}") public void success(String payload){handle(NotificationType.PAYMENT_SUCCESS,payload);}@KafkaListener(topics="${notification.kafka.topics.payment-failed}") public void failed(String payload){handle(NotificationType.PAYMENT_FAILED,payload);}@KafkaListener(topics="${notification.kafka.topics.booking-cancelled}") public void cancelled(String payload){handle(NotificationType.BOOKING_CANCELLED,payload);}@KafkaListener(topics="${notification.kafka.topics.refund-initiated}") public void initiated(String payload){handle(NotificationType.REFUND_INITIATED,payload);}@KafkaListener(topics="${notification.kafka.topics.refund-completed}") public void completed(String payload){handle(NotificationType.REFUND_COMPLETED,payload);}private void handle(NotificationType type,String payload){try{NotificationEvent event=mapper.readValue(payload,NotificationEvent.class);log.info("Received {} event eventId={}",type,event.getEventId());service.process(type,event);}catch(InvalidNotificationEventException e){throw e;}catch(Exception e){throw new InvalidNotificationEventException("Malformed notification event");}}}
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.moviebooking.notification.enums.NotificationType;
+import com.moviebooking.notification.event.NotificationEvent;
+import com.moviebooking.notification.exception.InvalidNotificationEventException;
+import com.moviebooking.notification.service.NotificationService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.stereotype.Component;
+
+@Component
+@RequiredArgsConstructor
+@Slf4j
+public class NotificationKafkaListener {
+    private final ObjectMapper mapper;
+    private final NotificationService service;
+
+    @KafkaListener(topics = "${notification.kafka.topics.booking-events}")
+    public void bookingEvents(String payload) {
+        handle(null, payload);
+    }
+
+    @KafkaListener(topics = "${notification.kafka.topics.booking-confirmed}")
+    public void booking(String payload) {
+        handle(NotificationType.BOOKING_CONFIRMED, payload);
+    }
+
+    @KafkaListener(topics = "${notification.kafka.topics.payment-success}")
+    public void success(String payload) {
+        handle(NotificationType.PAYMENT_SUCCESS, payload);
+    }
+
+    @KafkaListener(topics = "${notification.kafka.topics.payment-failed}")
+    public void failed(String payload) {
+        handle(NotificationType.PAYMENT_FAILED, payload);
+    }
+
+    @KafkaListener(topics = "${notification.kafka.topics.booking-cancelled}")
+    public void cancelled(String payload) {
+        handle(NotificationType.BOOKING_CANCELLED, payload);
+    }
+
+    @KafkaListener(topics = "${notification.kafka.topics.refund-initiated}")
+    public void initiated(String payload) {
+        handle(NotificationType.REFUND_INITIATED, payload);
+    }
+
+    @KafkaListener(topics = "${notification.kafka.topics.refund-completed}")
+    public void completed(String payload) {
+        handle(NotificationType.REFUND_COMPLETED, payload);
+    }
+
+    private void handle(NotificationType fallbackType, String payload) {
+        try {
+            NotificationEvent event = mapper.readValue(payload, NotificationEvent.class);
+            NotificationType type = fallbackType != null ? fallbackType : typeFromEvent(event);
+            log.info("Received {} event eventId={}", type, event.getEventId());
+            service.process(type, event);
+        } catch (InvalidNotificationEventException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new InvalidNotificationEventException("Malformed notification event");
+        }
+    }
+
+    private NotificationType typeFromEvent(NotificationEvent event) {
+        try {
+            return NotificationType.valueOf(event.getEventType());
+        } catch (Exception e) {
+            throw new InvalidNotificationEventException("Unknown notification event type");
+        }
+    }
+}

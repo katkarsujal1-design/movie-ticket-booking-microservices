@@ -8,10 +8,13 @@ services:
       VITE_MOVIE_SERVICE_URL: http://localhost:3001
       VITE_BOOKING_SERVICE_URL: http://localhost:3002
       VITE_PAYMENT_SERVICE_URL: http://localhost:3003
+      VITE_NOTIFICATION_SERVICE_URL: http://localhost:3005
     depends_on:
       movie-theatre-service:
         condition: service_started
       booking-service:
+        condition: service_healthy
+      notification-service:
         condition: service_healthy
     networks:
       - movie-network

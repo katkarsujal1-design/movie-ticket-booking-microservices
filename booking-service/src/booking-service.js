@@ -55,14 +55,18 @@ function mapBooking(row, seats = []) {
 
 function eventFor(eventType, booking) {
   return {
+    eventId: `${eventType}-${booking.bookingReference}`,
     eventType,
-    bookingId: booking.id,
+    bookingId: booking.bookingReference,
+    internalBookingId: booking.id,
     bookingReference: booking.bookingReference,
-    userId: booking.userId,
+    userId: String(booking.userId),
+    userEmail: `user${booking.userId}@moviebooking.local`,
     showId: booking.showId,
     movieId: booking.movieId,
     theatreId: booking.theatreId,
     seats: booking.seats.map((seat) => seat.seatNumber),
+    amount: booking.totalAmount,
     totalAmount: booking.totalAmount,
     status: booking.status,
     timestamp: new Date().toISOString()

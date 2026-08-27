@@ -35,12 +35,13 @@ notification:
     from: "${MAIL_FROM:no-reply@moviebooking.local}"
   kafka:
     topics:
+      booking-events: ${TOPIC_BOOKING_EVENTS:booking-events}
       booking-confirmed: ${TOPIC_BOOKING_CONFIRMED:booking-confirmed}
-      payment-success: ${TOPIC_PAYMENT_SUCCESS:payment-success}
-      payment-failed: ${TOPIC_PAYMENT_FAILED:payment-failed}
+      payment-success: ${TOPIC_PAYMENT_SUCCESS:payment.success}
+      payment-failed: ${TOPIC_PAYMENT_FAILED:payment.failed}
       booking-cancelled: ${TOPIC_BOOKING_CANCELLED:booking-cancelled}
       refund-initiated: ${TOPIC_REFUND_INITIATED:refund-initiated}
-      refund-completed: ${TOPIC_REFUND_COMPLETED:refund-completed}
+      refund-completed: ${TOPIC_REFUND_COMPLETED:payment.refunded}
 management:
   endpoints: { web: { exposure: { include: health,info } } }
   endpoint: { health: { probes: { enabled: true } } }
