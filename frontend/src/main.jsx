@@ -9,7 +9,7 @@ const BOOKING_API_URL =
 const PAYMENT_API_URL =
   import.meta.env.VITE_PAYMENT_SERVICE_URL || "http://localhost:3003";
 const NOTIFICATION_API_URL =
-  import.meta.env.VITE_NOTIFICATION_SERVICE_URL || "http://localhost:3005";
+  import.meta.env.VITE_NOTIFICATION_SERVICE_URL || "/notification-api";
 
 const PAYMENT_METHODS = ["UPI", "CARD", "NET_BANKING", "WALLET", "CASH"];
 

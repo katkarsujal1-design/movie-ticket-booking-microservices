@@ -8,7 +8,8 @@ services:
       VITE_MOVIE_SERVICE_URL: http://localhost:3001
       VITE_BOOKING_SERVICE_URL: http://localhost:3002
       VITE_PAYMENT_SERVICE_URL: http://localhost:3003
-      VITE_NOTIFICATION_SERVICE_URL: http://localhost:3005
+      VITE_NOTIFICATION_SERVICE_URL: /notification-api
+      NOTIFICATION_PROXY_TARGET: http://notification-service:3005
     depends_on:
       movie-theatre-service:
         condition: service_started

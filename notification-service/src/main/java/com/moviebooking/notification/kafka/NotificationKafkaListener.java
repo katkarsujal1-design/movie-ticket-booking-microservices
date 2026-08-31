@@ -8,7 +8,11 @@ import com.moviebooking.notification.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.support.KafkaHeaders;
+import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.stereotype.Component;
+
+import java.util.Map;
 
 @Component
 @RequiredArgsConstructor
@@ -16,40 +20,19 @@ import org.springframework.stereotype.Component;
 public class NotificationKafkaListener {
     private final ObjectMapper mapper;
     private final NotificationService service;
+    private final Map<String, NotificationType> topicTypes;
 
-    @KafkaListener(topics = "${notification.kafka.topics.booking-events}")
-    public void bookingEvents(String payload) {
-        handle(null, payload);
-    }
-
-    @KafkaListener(topics = "${notification.kafka.topics.booking-confirmed}")
-    public void booking(String payload) {
-        handle(NotificationType.BOOKING_CONFIRMED, payload);
-    }
-
-    @KafkaListener(topics = "${notification.kafka.topics.payment-success}")
-    public void success(String payload) {
-        handle(NotificationType.PAYMENT_SUCCESS, payload);
-    }
-
-    @KafkaListener(topics = "${notification.kafka.topics.payment-failed}")
-    public void failed(String payload) {
-        handle(NotificationType.PAYMENT_FAILED, payload);
-    }
-
-    @KafkaListener(topics = "${notification.kafka.topics.booking-cancelled}")
-    public void cancelled(String payload) {
-        handle(NotificationType.BOOKING_CANCELLED, payload);
-    }
-
-    @KafkaListener(topics = "${notification.kafka.topics.refund-initiated}")
-    public void initiated(String payload) {
-        handle(NotificationType.REFUND_INITIATED, payload);
-    }
-
-    @KafkaListener(topics = "${notification.kafka.topics.refund-completed}")
-    public void completed(String payload) {
-        handle(NotificationType.REFUND_COMPLETED, payload);
+    @KafkaListener(topics = {
+            "${notification.kafka.topics.booking-events}",
+            "${notification.kafka.topics.booking-confirmed}",
+            "${notification.kafka.topics.payment-success}",
+            "${notification.kafka.topics.payment-failed}",
+            "${notification.kafka.topics.booking-cancelled}",
+            "${notification.kafka.topics.refund-initiated}",
+            "${notification.kafka.topics.refund-completed}"
+    })
+    public void notifications(String payload, @Header(KafkaHeaders.RECEIVED_TOPIC) String topic) {
+        handle(topicTypes.get(topic), payload);
     }
 
     private void handle(NotificationType fallbackType, String payload) {
