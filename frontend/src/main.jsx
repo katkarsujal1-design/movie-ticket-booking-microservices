@@ -135,9 +135,15 @@ function App() {
   }, [selectedShowId]);
 
   async function readResponse(response) {
-    const body = await response.json().catch(() => ({}));
+    const text = await response.text();
+    let body = {};
+    try {
+      body = text ? JSON.parse(text) : {};
+    } catch {
+      body = { message: text };
+    }
     if (!response.ok) {
-      throw new Error(body.message || "The request could not be completed");
+      throw new Error(body.message || body.error || `Request failed with status ${response.status}`);
     }
     return body;
   }
